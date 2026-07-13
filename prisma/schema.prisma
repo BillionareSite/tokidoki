@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+model Product {
+  id              String   @id @default(cuid())
+  name            String
+  description     String
+  price           Float
+  originalPrice   Float
+  images          String[]
+  category        String        // "Woody", "Floral", "Citrus", "Oud", "Musk" etc.
+  concentration   String   @default("EDP")   // EDT, EDP, Parfum, Attar
+  topNotes        String[] @default([])
+  middleNotes     String[] @default([])
+  baseNotes       String[] @default([])
+  sizeMl          Int      @default(50)
+  gender          String   @default("unisex") // men / women / unisex
+  longevity       String   @default("")
+  sillage         String   @default("")
+  stock           Int      @default(0)
+  featured        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+}
+
+model User {
+  id           String        @id @default(cuid())
+  name         String
+  email        String        @unique
+  password     String
+  verified     Boolean       @default(false)
+  otp          String?
+  otpExpiry    DateTime?
+  phone        String        @default("")
+  whatsapp     String        @default("")
+  dob          String        @default("")
+  gender       String        @default("")
+  address      String        @default("")
+  pincode      String        @default("")
+  createdAt    DateTime      @default(now())
+  couponUsages CouponUsage[]
+}
+
+model Order {
+  id                  String               @id @default(cuid())
+  orderId             String               @default("")
+  name                String
+  phone               String
+  whatsapp            String               @default("")
+  address             String
+  pincode             String
+  email               String               @default("")
+  items               Json
+  total               Float
+  discount            Float                @default(0)
+  couponCode          String               @default("")
+  paymentMethod       String               @default("cod")
+  paymentSenderName   String               @default("")
+  paymentUTR          String               @default("")
+  paymentScreenshot   String               @default("")
+  paymentVerified     Boolean              @default(false)
+  razorpayOrderId     String               @default("")
+  razorpayPaymentId   String               @default("")
+  status              String               @default("pending")
+  createdAt           DateTime             @default(now())
+  cancellationRequest CancellationRequest?
+}
+
+model CancellationRequest {
+  id        String   @id @default(cuid())
+  orderId   String   @unique
+  order     Order    @relation(fields: [orderId], references: [id])
+  type      String   @default("cancellation")
+  reason    String
+  details   String   @default("")
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Ticket {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  whatsapp  String   @default("")
+  subject   String
+  message   String
+  messages  Json     @default("[]")
+  reply     String?
+  status    String   @default("open")
+  isGuest   Boolean  @default(false)
+  userId    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Coupon {
+  id                  String        @id @default(cuid())
+  code                String        @unique
+  description         String        @default("")
+  type                String        @default("percentage")
+  value               Float
+  maxDiscount         Float         @default(0)
+  minCartValue        Float         @default(0)
+  usageType           String        @default("one_per_user")
+  totalLimit          Int           @default(0)
+  totalUsed           Int           @default(0)
+  expiryDate          DateTime?
+  isActive            Boolean       @default(true)
+  isNewUserOnly       Boolean       @default(false)
+  categoryRestriction String        @default("")
+  createdAt           DateTime      @default(now())
+  couponUsages        CouponUsage[]
+}
+
+model CouponUsage {
+  id        String   @id @default(cuid())
+  couponId  String
+  userId    String
+  email     String
+  orderId   String
+  coupon    Coupon   @relation(fields: [couponId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model AdminUser {
+  id          String   @id @default(cuid())
+  name        String
+  email       String   @unique
+  password    String
+  permissions Json     @default("[]")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model StoreSettings {
+  id              String   @id @default(cuid())
+  paymentMethods  Json     @default("{\"cod\":true,\"upi\":false,\"bank\":false,\"card\":false}")
+  upiId           String   @default("")
+  bankDetails     String   @default("")
+  deliveryCharge  Float    @default(0)
+  freeDeliveryMin Float    @default(999)
+  minOrderValue   Float    @default(0)
+  updatedAt       DateTime @updatedAt
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  icon      String   @default("🌸")
+  image     String   @default("")
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
