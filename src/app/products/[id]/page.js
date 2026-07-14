@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import AddToCartButton from "@/components/AddToCartButton";
+import ProductGallery from "@/components/ProductGallery";
 import { notFound } from "next/navigation";
 
 export default async function ProductDetailPage({ params }) {
@@ -9,11 +10,7 @@ export default async function ProductDetailPage({ params }) {
 
   return (
     <div className="px-4 sm:px-6 py-8 sm:py-12 max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
-      <div className="aspect-square bg-[var(--color-surfaceMuted)] rounded-[var(--radius-lg)] overflow-hidden">
-        {product.images?.[0] && (
-          <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
-        )}
-      </div>
+  <ProductGallery images={product.images} name={product.name} />
 
       <div>
         <p className="text-xs uppercase tracking-widest text-[var(--color-accent)] mb-2">

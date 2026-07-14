@@ -244,3 +244,213 @@ function CategoriesTab() {
     </div>
   );
 }
+function OrdersTab() {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    setLoading(true);
+    const res = await fetch("/api/admin/orders");
+    const data = await res.json();
+    setOrders(data.orders || []);
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function updateStatus(id, status) {
+    await fetch(`/api/admin/orders/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    load();
+  }
+
+  async function handleCancellation(id, status) {
+    await fetch(`/api/admin/cancellations/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    load();
+  }
+
+  if (loading) return <p className="text-sm text-[var(--color-textMuted)]">Loading orders...</p>;
+
+  return (
+    <div className="space-y-3">
+      {orders.map((o) => (
+        <div key={o.id} className="border border-[var(--color-border)] rounded-[var(--radius-md)] p-4">
+          <div className="flex flex-wrap justify-between gap-2 mb-2">
+            <div>
+              <p className="text-sm">#{o.orderId} — {o.name}</p>
+              <p className="text-xs text-[var(--color-textMuted)]">{o.phone} · {o.address}, {o.pincode}</p>
+            </div>
+            <select
+              value={o.status}
+              onChange={(e) => updateStatus(o.id, e.target.value)}
+              className="text-xs px-3 py-1.5 rounded-[var(--radius-pill)] border border-[var(--color-border)] bg-[var(--color-background)]"
+            >
+              {["pending", "confirmed", "shipped", "delivered", "cancelled"].map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+          <p className="text-xs text-[var(--color-textMuted)]">
+            {o.items.map((i) => `${i.name} x${i.qty}`).join(", ")}
+          </p>
+          <p className="text-sm mt-1">Total: ₹{o.total} {o.discount > 0 && `(₹${o.discount} off via ${o.couponCode})`}</p>
+
+          {o.cancellationRequest && o.cancellationRequest.status === "pending" && (
+            <div className="mt-2 p-2 bg-[var(--color-surfaceMuted)] rounded-[var(--radius-sm)] text-xs">
+              <p>Cancellation requested: {o.cancellationRequest.reason}</p>
+              <div className="flex gap-2 mt-1">
+                <button onClick={() => handleCancellation(o.cancellationRequest.id, "approved")} className="px-3 py-1 bg-[var(--color-error)] text-white rounded-[var(--radius-pill)]">Approve</button>
+                <button onClick={() => handleCancellation(o.cancellationRequest.id, "rejected")} className="px-3 py-1 border border-[var(--color-border)] rounded-[var(--radius-pill)]">Reject</button>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+      {orders.length === 0 && <p className="text-sm text-[var(--color-textMuted)]">No orders yet.</p>}
+    </div>
+  );
+}
+
+function CouponsTab() {
+  const [coupons, setCoupons] = useState([]);
+  const [form, setForm] = useState({ code: "", description: "", type: "percentage", value: "", maxDiscount: "", minCartValue: "", totalLimit: "", expiryDate: "" });
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    setLoading(true);
+    const res = await fetch("/api/admin/coupons");
+    const data = await res.json();
+    setCoupons(data.coupons || []);
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    await fetch("/api/admin/coupons", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    setForm({ code: "", description: "", type: "percentage", value: "", maxDiscount: "", minCartValue: "", totalLimit: "", expiryDate: "" });
+    load();
+  }
+
+  async function toggleActive(id, isActive) {
+    await fetch(`/api/admin/coupons/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isActive: !isActive }),
+    });
+    load();
+  }
+
+  async function handleDelete(id) {
+    if (!confirm("Delete this coupon?")) return;
+    await fetch(`/api/admin/coupons/${id}`, { method: "DELETE" });
+    load();
+  }
+
+  const inputClass = "px-3 py-2 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-background)] text-sm";
+
+  return (
+    <div>
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-4">
+        <input className={inputClass} placeholder="Code (e.g. WELCOME10)" required value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} />
+        <select className={inputClass} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+          <option value="percentage">Percentage %</option>
+          <option value="flat">Flat ₹ amount</option>
+        </select>
+        <input className={inputClass} placeholder="Value" type="number" required value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} />
+        <input className={inputClass} placeholder="Max discount ₹ (percentage only)" type="number" value={form.maxDiscount} onChange={(e) => setForm({ ...form, maxDiscount: e.target.value })} />
+        <input className={inputClass} placeholder="Min cart value ₹" type="number" value={form.minCartValue} onChange={(e) => setForm({ ...form, minCartValue: e.target.value })} />
+        <input className={inputClass} placeholder="Total usage limit (0 = unlimited)" type="number" value={form.totalLimit} onChange={(e) => setForm({ ...form, totalLimit: e.target.value })} />
+        <input className={inputClass} type="date" value={form.expiryDate} onChange={(e) => setForm({ ...form, expiryDate: e.target.value })} />
+        <button type="submit" className="px-6 py-2 bg-[var(--color-primary)] text-[var(--color-textInverse)] rounded-[var(--radius-pill)] text-sm sm:col-span-2">
+          Create Coupon
+        </button>
+      </form>
+
+      {loading ? <p className="text-sm text-[var(--color-textMuted)]">Loading...</p> : (
+        <div className="space-y-2">
+          {coupons.map((c) => (
+            <div key={c.id} className="flex flex-wrap items-center gap-3 border border-[var(--color-border)] rounded-[var(--radius-md)] p-3">
+              <span className="text-sm font-medium">{c.code}</span>
+              <span className="text-xs text-[var(--color-textMuted)]">
+                {c.type === "percentage" ? `${c.value}% off` : `₹${c.value} off`} · Used {c.totalUsed}/{c.totalLimit || "∞"}
+              </span>
+              <button onClick={() => toggleActive(c.id, c.isActive)} className={`ml-auto text-xs px-3 py-1.5 rounded-[var(--radius-pill)] border ${c.isActive ? "border-[var(--color-success)] text-[var(--color-success)]" : "border-[var(--color-border)] text-[var(--color-textMuted)]"}`}>
+                {c.isActive ? "Active" : "Inactive"}
+              </button>
+              <button onClick={() => handleDelete(c.id)} className="text-xs px-3 py-1.5 text-[var(--color-error)] border border-[var(--color-error)] rounded-[var(--radius-pill)]">Delete</button>
+            </div>
+          ))}
+          {coupons.length === 0 && <p className="text-sm text-[var(--color-textMuted)]">No coupons yet.</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TicketsTab() {
+  const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [replyDrafts, setReplyDrafts] = useState({});
+
+  async function load() {
+    setLoading(true);
+    const res = await fetch("/api/admin/tickets");
+    const data = await res.json();
+    setTickets(data.tickets || []);
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function sendReply(id) {
+    await fetch(`/api/admin/tickets/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reply: replyDrafts[id] || "", status: "resolved" }),
+    });
+    load();
+  }
+
+  if (loading) return <p className="text-sm text-[var(--color-textMuted)]">Loading tickets...</p>;
+
+  return (
+    <div className="space-y-3">
+      {tickets.map((t) => (
+        <div key={t.id} className="border border-[var(--color-border)] rounded-[var(--radius-md)] p-4">
+          <div className="flex justify-between mb-1">
+            <p className="text-sm">{t.subject}</p>
+            <span className="text-xs capitalize text-[var(--color-textMuted)]">{t.status}</span>
+          </div>
+          <p className="text-xs text-[var(--color-textMuted)] mb-2">{t.name} · {t.email}</p>
+          <p className="text-sm mb-3">{t.message}</p>
+          {t.reply && <p className="text-sm text-[var(--color-accent)] mb-3">Your reply: {t.reply}</p>}
+          {t.status !== "resolved" && (
+            <div className="flex gap-2">
+              <input
+                className="flex-1 px-3 py-2 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-background)] text-sm"
+                placeholder="Type a reply..."
+                value={replyDrafts[t.id] || ""}
+                onChange={(e) => setReplyDrafts({ ...replyDrafts, [t.id]: e.target.value })}
+              />
+              <button onClick={() => sendReply(t.id)} className="px-4 py-2 bg-[var(--color-primary)] text-[var(--color-textInverse)] rounded-[var(--radius-pill)] text-xs shrink-0">Reply</button>
+            </div>
+          )}
+        </div>
+      ))}
+      {tickets.length === 0 && <p className="text-sm text-[var(--color-textMuted)]">No support tickets yet.</p>}
+    </div>
+  );
+}
